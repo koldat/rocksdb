@@ -41,7 +41,7 @@ add_custom_command(OUTPUT ${BUILD_VERSION_CC}
     COMMAND echo "const char* rocksdb_build_git_datetime = \"rocksdb_build_git_datetime:${GIT_DATE_TIME}\";" >> ${BUILD_VERSION_CC}
     COMMAND echo const char* rocksdb_build_compile_date = __DATE__\; >> ${BUILD_VERSION_CC}
 )
-
+    
 add_custom_target(GenerateBuildVersion DEPENDS ${BUILD_VERSION_CC})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi /nologo  /EHsc /GS /Gd /GR /GF /fp:precise /Zc:wchar_t /Zc:forScope /errorReport:queue")
@@ -73,6 +73,9 @@ add_definitions(-DWIN32 -DOS_WIN -D_MBCS -DWIN64)
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_SOURCE_DIR}/third-party/gtest-1.7.0/fused-src)
+include_directories($ENV{JAVA_HOME}/include)
+include_directories($ENV{JAVA_HOME}/include/win32)
+include_directories(${PROJECT_SOURCE_DIR}/java)
 
 set(ROCKSDB_LIBS rocksdblib${ARTIFACT_SUFFIX})
 set(THIRDPARTY_LIBS ${THIRDPARTY_LIBS} gtest)
@@ -225,6 +228,7 @@ set(SOURCES
         util/xxhash.cc
         utilities/backupable/backupable_db.cc
         utilities/checkpoint/checkpoint.cc
+        utilities/compaction_filters/remove_emptyvalue_compactionfilter.cc
         utilities/document/document_db.cc
         utilities/document/json_document.cc
         utilities/document/json_document_builder.cc
@@ -251,6 +255,98 @@ set(SOURCES
         utilities/write_batch_with_index/write_batch_with_index_internal.cc
 )
 
+set(JNI_NATIVE_SOURCES                                          
+        java/rocksjni/backupenginejni.cc                            
+        java/rocksjni/backupablejni.cc                              
+        java/rocksjni/checkpoint.cc                                 
+        java/rocksjni/columnfamilyhandle.cc                         
+        java/rocksjni/compaction_filter.cc                          
+        java/rocksjni/comparator.cc                                 
+        java/rocksjni/comparatorjnicallback.cc                      
+        java/rocksjni/env.cc                                        
+        java/rocksjni/filter.cc                                     
+        java/rocksjni/iterator.cc                                   
+        java/rocksjni/loggerjnicallback.cc                          
+        java/rocksjni/memtablejni.cc                                
+        java/rocksjni/merge_operator.cc                             
+        java/rocksjni/options.cc                                    
+        java/rocksjni/ratelimiterjni.cc                             
+        java/rocksjni/remove_emptyvalue_compactionfilterjni.cc      
+        java/rocksjni/restorejni.cc                                 
+        java/rocksjni/rocksjni.cc                                   
+        java/rocksjni/slice.cc                                      
+        java/rocksjni/snapshot.cc                                   
+        java/rocksjni/statistics.cc                                 
+        java/rocksjni/table.cc                                      
+        java/rocksjni/transaction_log.cc                            
+        java/rocksjni/ttl.cc                                        
+        java/rocksjni/write_batch.cc                                
+        java/rocksjni/writebatchhandlerjnicallback.cc               
+        java/rocksjni/write_batch_with_index.cc
+)
+
+set(NATIVE_JAVA_CLASSES
+        org.rocksdb.AbstractCompactionFilter
+        org.rocksdb.AbstractComparator
+        org.rocksdb.AbstractSlice
+        org.rocksdb.BackupEngine
+        org.rocksdb.BackupableDB
+        org.rocksdb.BackupableDBOptions
+        org.rocksdb.BlockBasedTableConfig
+        org.rocksdb.BloomFilter
+        org.rocksdb.Checkpoint
+        org.rocksdb.ColumnFamilyHandle
+        org.rocksdb.ColumnFamilyOptions
+        org.rocksdb.Comparator
+        org.rocksdb.ComparatorOptions
+        org.rocksdb.DBOptions
+        org.rocksdb.DirectComparator
+        org.rocksdb.DirectSlice
+        org.rocksdb.Env
+        org.rocksdb.FlushOptions
+        org.rocksdb.Filter
+        org.rocksdb.GenericRateLimiterConfig
+        org.rocksdb.HashLinkedListMemTableConfig
+        org.rocksdb.HashSkipListMemTableConfig
+        org.rocksdb.Logger
+        org.rocksdb.MergeOperator
+        org.rocksdb.Options
+        org.rocksdb.PlainTableConfig
+        org.rocksdb.ReadOptions
+        org.rocksdb.RemoveEmptyValueCompactionFilter
+        org.rocksdb.RestoreBackupableDB
+        org.rocksdb.RestoreOptions
+        org.rocksdb.RocksDB
+        org.rocksdb.RocksEnv
+        org.rocksdb.RocksIterator
+        org.rocksdb.RocksMemEnv
+        org.rocksdb.SkipListMemTableConfig
+        org.rocksdb.Slice
+        org.rocksdb.Statistics
+        org.rocksdb.TransactionLogIterator
+        org.rocksdb.TtlDB
+        org.rocksdb.VectorMemTableConfig
+        org.rocksdb.Snapshot
+        org.rocksdb.StringAppendOperator
+        org.rocksdb.WriteBatch
+        org.rocksdb.WriteBatch.Handler
+        org.rocksdb.WriteOptions
+        org.rocksdb.WriteBatchWithIndex
+        org.rocksdb.WBWIRocksIterator
+)
+
+if(NOT EXISTS ${PROJECT_SOURCE_DIR}/java/classes)
+  execute_process(COMMAND mkdir ${PROJECT_SOURCE_DIR}/java/classes)
+endif(NOT EXISTS ${PROJECT_SOURCE_DIR}/java/classes)
+
+if(EXISTS $ENV{JAVA_HOME}/bin/javac.exe)
+  execute_process(COMMAND javac -d ${PROJECT_SOURCE_DIR}/java/classes ${PROJECT_SOURCE_DIR}/java/src/main/java/org/rocksdb/util/*.java ${PROJECT_SOURCE_DIR}/java/src/main/java/org/rocksdb/*.java)
+  execute_process(COMMAND javah -cp ${PROJECT_SOURCE_DIR}/java/classes -d ${PROJECT_SOURCE_DIR}/java/include -jni ${NATIVE_JAVA_CLASSES})
+  add_library(jnirocksdblib${ARTIFACT_SUFFIX} SHARED ${JNI_NATIVE_SOURCES})
+  set_target_properties(jnirocksdblib${ARTIFACT_SUFFIX} PROPERTIES COMPILE_FLAGS "/Fd${CMAKE_CFG_INTDIR}/jnirocksdblib${ARTIFACT_SUFFIX}.pdb")
+  target_link_libraries(jnirocksdblib${ARTIFACT_SUFFIX} rocksdblib${ARTIFACT_SUFFIX} ${LIBS})
+endif(EXISTS $ENV{JAVA_HOME}/bin/javac.exe)
+    
 add_library(rocksdblib${ARTIFACT_SUFFIX} ${SOURCES})
 set_target_properties(rocksdblib${ARTIFACT_SUFFIX} PROPERTIES COMPILE_FLAGS "/Fd${CMAKE_CFG_INTDIR}/rocksdblib${ARTIFACT_SUFFIX}.pdb")
 add_dependencies(rocksdblib${ARTIFACT_SUFFIX} GenerateBuildVersion)

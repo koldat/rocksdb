@@ -83,10 +83,10 @@ jintArray Java_org_rocksdb_BackupEngine_getCorruptedBackups(
   // store backupids in int array
   const std::vector<rocksdb::BackupID>::size_type
       kIdSize = backup_ids.size();
-  int int_backup_ids[kIdSize];
+  std::vector<jint> int_backup_ids;
   for (std::vector<rocksdb::BackupID>::size_type i = 0;
       i != kIdSize; i++) {
-    int_backup_ids[i] = backup_ids[i];
+    int_backup_ids.push_back(backup_ids[i]);
   }
   // Store ints in java array
   jintArray ret_backup_ids;
@@ -94,7 +94,7 @@ jintArray Java_org_rocksdb_BackupEngine_getCorruptedBackups(
   jsize ret_backup_ids_size = static_cast<jsize>(kIdSize);
   ret_backup_ids = env->NewIntArray(ret_backup_ids_size);
   env->SetIntArrayRegion(ret_backup_ids, 0, ret_backup_ids_size,
-      int_backup_ids);
+      &(*int_backup_ids.begin()));
   return ret_backup_ids;
 }
 

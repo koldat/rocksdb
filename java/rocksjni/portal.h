@@ -607,7 +607,7 @@ class WriteTypeJni {
     }
 
     // Get the DELETE enum field of org.rocksdb.WBWIRocksIterator.WriteType
-    static jobject DELETE(JNIEnv* env) {
+    static jobject DELETE_(JNIEnv* env) {
       return getEnum(env, "DELETE");
     }
 
@@ -658,7 +658,7 @@ class WriteEntryJni {
           break;
 
         case kDeleteRecord:
-          jwrite_type = WriteTypeJni::DELETE(env);
+          jwrite_type = WriteTypeJni::DELETE_(env);
           break;
 
         case kLogDataRecord:

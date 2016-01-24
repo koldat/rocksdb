@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <jni.h>
-#include <strings.h>
 #include <memory>
 
 #include "include/org_rocksdb_Options.h"
