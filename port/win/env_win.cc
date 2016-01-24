@@ -1553,25 +1553,8 @@ class WinEnv : public Env {
   }
 
   virtual uint64_t NowMicros() override {
-    // all std::chrono clocks on windows proved to return
-    // values that may repeat that is not good enough for some uses.
-    const int64_t c_UnixEpochStartTicks = 116444736000000000i64;
-    const int64_t c_FtToMicroSec = 10;
-
-    // This interface needs to return system time and not
-    // just any microseconds because it is often used as an argument
-    // to TimedWait() on condition variable
-    FILETIME ftSystemTime;
-    GetSystemTimePreciseAsFileTime(&ftSystemTime);
-
-    LARGE_INTEGER li;
-    li.LowPart = ftSystemTime.dwLowDateTime;
-    li.HighPart = ftSystemTime.dwHighDateTime;
-    // Subtract unix epoch start
-    li.QuadPart -= c_UnixEpochStartTicks;
-    // Convert to microsecs
-    li.QuadPart /= c_FtToMicroSec;
-    return li.QuadPart;
+    using namespace std::chrono;
+    return duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
   }
 
   virtual uint64_t NowNanos() override {
